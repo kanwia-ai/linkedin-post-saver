@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Export LinkedIn Posts</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #0a66c2;
+      margin-bottom: 10px;
+    }
+    .stats {
+      background: #f0f7ff;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    button {
+      background: #0a66c2;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 24px;
+      font-size: 16px;
+      cursor: pointer;
+      width: 100%;
+      margin: 10px 0;
+    }
+    button:hover {
+      background: #004182;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .progress {
+      margin: 20px 0;
+      padding: 15px;
+      background: #e8f5e9;
+      border-radius: 8px;
+      display: none;
+    }
+    .progress.show {
+      display: block;
+    }
+    .progress.error {
+      background: #ffebee;
+      color: #c62828;
+    }
+    .success {
+      color: #2e7d32;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Export LinkedIn Posts</h1>
+    <p>Export your saved posts as JSON with optional embeddings for RAG.</p>
+
+    <div class="stats">
+      <strong>Posts to export:</strong> <span id="postCount">Loading...</span><br>
+      <strong>API Key:</strong> <span id="apiStatus">Checking...</span>
+    </div>
+
+    <label style="display:flex;align-items:center;gap:8px;margin:15px 0;cursor:pointer;">
+      <input type="checkbox" id="generateEmbeddings" checked>
+      <span>Generate embeddings for RAG (requires API key)</span>
+    </label>
+
+    <button id="selectFolder">Select Folder & Export</button>
+
+    <div class="progress" id="progress">
+      <span id="progressText">Exporting...</span>
+    </div>
+  </div>
+
+  <script src="../lib/markdown.js"></script>
+  <script src="export.js"></script>
+</body>
+</html>

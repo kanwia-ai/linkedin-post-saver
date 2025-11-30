@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>LinkedIn Post Saver</h1>
+
+    <div class="section">
+      <h2>Stats</h2>
+      <p>Posts saved: <span id="postCount">0</span></p>
+    </div>
+
+    <div class="section">
+      <h2>Backfill Mode</h2>
+      <label class="toggle">
+        <input type="checkbox" id="backfillMode">
+        <span>Show "Next Post" helper</span>
+      </label>
+      <p class="hint">Enable when clicking through saved posts</p>
+    </div>
+
+    <div class="section">
+      <h2>Export</h2>
+      <button id="exportJson">Quick Export (JSON only)</button>
+      <button id="exportMarkdown">Export with Embeddings</button>
+    </div>
+
+    <div class="section">
+      <h2>Data</h2>
+      <button id="clearData" class="danger">Clear All Data</button>
+    </div>
+
+    <div class="section">
+      <button id="openSettings" class="secondary">Settings (API Key)</button>
+    </div>
+  </div>
+  <script src="../lib/markdown.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

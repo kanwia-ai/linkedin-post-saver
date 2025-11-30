@@ -17,7 +17,15 @@ const LinkedInSaverUI = {
 
     // If on saved posts page, mark which ones are already captured
     if (window.location.pathname.includes('/my-items/saved-posts')) {
-      setTimeout(() => this.markSavedPosts(), 1500); // Wait for page to load
+      // Try multiple times with increasing delays to catch LinkedIn's lazy loading
+      this.markSavedPosts();
+      setTimeout(() => this.markSavedPosts(), 500);
+      setTimeout(() => this.markSavedPosts(), 1500);
+      setTimeout(() => this.markSavedPosts(), 3000);
+
+      // Also watch for new cards being added to the DOM
+      this.observeNewCards();
+
       // Re-check when user scrolls (LinkedIn lazy loads) - throttled
       window.addEventListener('scroll', () => {
         if (this.scrollThrottleTimer) return;
@@ -190,6 +198,14 @@ const LinkedInSaverUI = {
       .lps-backfill-helper button.secondary:hover {
         background: #444;
       }
+      .lps-backfill-helper button:disabled {
+        opacity: 0.7;
+        cursor: wait;
+      }
+      .lps-backfill-helper button.success {
+        background: #057642 !important;
+        color: white !important;
+      }
       .lps-backfill-comments {
         display: flex !important;
         align-items: center !important;
@@ -312,14 +328,16 @@ const LinkedInSaverUI = {
       </label>
       <button id="lps-capture-next">📥 Save Post</button>
       <button id="lps-next" class="secondary">← Back to List</button>
-      <button id="lps-done" class="secondary">✓ Done</button>
+      <button id="lps-done" class="secondary" style="display: none;">✓ Done</button>
     `;
     document.body.appendChild(helper);
     this.backfillHelper = helper;
     this.backfillCommentsToggle = helper.querySelector('#lps-backfill-comments');
+    this.backfillSaveBtn = helper.querySelector('#lps-capture-next');
+    this.backfillDoneBtn = helper.querySelector('#lps-done');
 
     // Backfill helper buttons
-    helper.querySelector('#lps-capture-next').addEventListener('click', async () => {
+    this.backfillSaveBtn.addEventListener('click', async () => {
       await this.captureCurrentPost();
       // Don't auto-navigate - let user control the flow
     });
@@ -359,12 +377,20 @@ const LinkedInSaverUI = {
       return;
     }
 
-    this.floatingBtn.innerHTML = '⏳';
-    this.floatingBtn.classList.add('loading');
+    // Check if we're in backfill mode to update the correct button
+    const isBackfillMode = this.backfillHelper?.classList.contains('show');
+    const activeBtn = isBackfillMode ? this.backfillSaveBtn : this.floatingBtn;
+    const originalContent = activeBtn.innerHTML;
+
+    // Show loading state
+    activeBtn.innerHTML = '⏳ Saving...';
+    activeBtn.disabled = true;
+    if (!isBackfillMode) {
+      this.floatingBtn.classList.add('loading');
+    }
 
     try {
       // Check if we should extract comments (from the appropriate toggle)
-      const isBackfillMode = this.backfillHelper?.classList.contains('show');
       const shouldExtractComments = isBackfillMode
         ? (this.backfillCommentsToggle?.checked ?? true)
         : (this.commentsToggle?.checked ?? true);
@@ -393,9 +419,15 @@ const LinkedInSaverUI = {
       });
 
       if (response.success) {
-        this.floatingBtn.innerHTML = '✓';
-        this.floatingBtn.classList.remove('loading');
-        this.floatingBtn.classList.add('success');
+        activeBtn.innerHTML = '✓ Saved!';
+        if (!isBackfillMode) {
+          this.floatingBtn.classList.remove('loading');
+          this.floatingBtn.classList.add('success');
+        } else {
+          // Show the Done button (green) after first successful save
+          this.backfillDoneBtn.style.display = 'block';
+          this.backfillDoneBtn.classList.add('success');
+        }
 
         if (response.duplicate) {
           this.showToast('Already saved!', 'success');
@@ -408,16 +440,21 @@ const LinkedInSaverUI = {
       }
     } catch (err) {
       console.error('[LinkedIn Post Saver] Error:', err);
-      this.floatingBtn.innerHTML = '✗';
-      this.floatingBtn.classList.remove('loading');
-      this.floatingBtn.classList.add('error');
+      activeBtn.innerHTML = '✗ Error';
+      if (!isBackfillMode) {
+        this.floatingBtn.classList.remove('loading');
+        this.floatingBtn.classList.add('error');
+      }
       this.showToast(`Error: ${err.message}`, 'error');
     }
 
     // Reset button after delay
     setTimeout(() => {
-      this.floatingBtn.innerHTML = '📥';
-      this.floatingBtn.classList.remove('success', 'error', 'loading');
+      activeBtn.innerHTML = originalContent;
+      activeBtn.disabled = false;
+      if (!isBackfillMode) {
+        this.floatingBtn.classList.remove('success', 'error', 'loading');
+      }
     }, 2000);
   },
 
@@ -444,10 +481,12 @@ const LinkedInSaverUI = {
   async updateBackfillCount() {
     try {
       const result = await chrome.storage.local.get(['postCount']);
+      const postCount = result.postCount || 0;
       const countElem = this.backfillHelper.querySelector('#lps-count');
       if (countElem) {
-        countElem.textContent = result.postCount || 0;
+        countElem.textContent = postCount;
       }
+      // Note: Done button is shown only after saving THIS post, not based on total count
     } catch (err) {
       console.error('[LinkedIn Post Saver] Error updating count:', err);
     }
@@ -456,12 +495,46 @@ const LinkedInSaverUI = {
   exitBackfillMode() {
     chrome.storage.local.set({ backfillMode: false });
     this.backfillHelper.classList.remove('show');
+    this.floatingContainer?.classList.remove('hidden');
     this.showToast('Backfill mode disabled');
+  },
+
+  observeNewCards() {
+    // Watch for new post cards being added to the DOM
+    const observer = new MutationObserver((mutations) => {
+      let hasNewCards = false;
+      for (const mutation of mutations) {
+        if (mutation.addedNodes.length > 0) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType === 1 && (
+              node.matches?.('[data-chameleon-result-urn]') ||
+              node.querySelector?.('[data-chameleon-result-urn]')
+            )) {
+              hasNewCards = true;
+              break;
+            }
+          }
+        }
+        if (hasNewCards) break;
+      }
+      if (hasNewCards) {
+        // Debounce to avoid too many calls
+        clearTimeout(this.cardObserverTimer);
+        this.cardObserverTimer = setTimeout(() => this.markSavedPosts(), 200);
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
   },
 
   async markSavedPosts() {
     // Only run on saved posts list page
     if (!window.location.pathname.includes('/my-items/saved-posts')) return;
+
+    console.log('[LPS Debug] markSavedPosts() called on:', window.location.pathname);
 
     try {
       // Get all saved post URLs from storage
@@ -470,8 +543,22 @@ const LinkedInSaverUI = {
       const savedUrls = new Set(savedPosts.map(p => p.url));
       const savedIds = new Set(savedPosts.map(p => p.id));
 
+      console.log('[LPS Debug] Saved posts in storage:', savedPosts.length);
+      console.log('[LPS Debug] Saved IDs:', [...savedIds].slice(0, 3));
+
       // LinkedIn uses data-chameleon-result-urn on saved posts page
       const postCards = document.querySelectorAll('[data-chameleon-result-urn]');
+      console.log('[LPS Debug] Found post cards with [data-chameleon-result-urn]:', postCards.length);
+
+      // Also try other selectors LinkedIn might use
+      if (postCards.length === 0) {
+        const altCards1 = document.querySelectorAll('[data-urn]');
+        const altCards2 = document.querySelectorAll('.entity-result');
+        const altCards3 = document.querySelectorAll('.reusable-search__result-container');
+        console.log('[LPS Debug] Alt selectors - [data-urn]:', altCards1.length,
+          '.entity-result:', altCards2.length,
+          '.reusable-search__result-container:', altCards3.length);
+      }
 
       let savedCount = 0;
       let unsavedCount = 0;

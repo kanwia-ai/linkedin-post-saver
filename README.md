@@ -1,8 +1,22 @@
 # LinkedIn Post Saver
 
-A Chrome extension to save LinkedIn posts you've bookmarked, with optional AI-powered embeddings for semantic search.
+**This is for anyone who has ever saved a post on LinkedIn and then wondered how to find it again.**
 
-**Ever saved a LinkedIn post and then couldn't find it again?** Or wished you could actually *use* all those insights you've bookmarked over the years? This extension lets you export your saved posts as structured data, so you can search them semantically, feed them into personal projects, or just make sure you never lose that one post you've been looking for.
+You know the feeling. You're scrolling through your feed, you see something brilliant—a framework, a hot take, a thread that perfectly articulates something you've been thinking about—and you hit "Save."
+
+Then it disappears into the void.
+
+LinkedIn's saved posts are a graveyard of good intentions. There's no search. No tags. No way to actually *use* all that rich context you've been collecting. Just an endless scroll of posts you vaguely remember saving for "later."
+
+**This extension changes that.**
+
+It helps you systematically capture your saved posts—the full content, the author info, the comments, everything—and export them as structured data. From there, you can:
+
+- **Search semantically** with AI embeddings (finally find that post about "the framework for thinking about frameworks")
+- **Build your own tools** on top of your curated content
+- **Never lose a post again** by backing up to JSON
+
+Stop letting your saved posts collect dust. Start actually using them.
 
 ## Features
 
